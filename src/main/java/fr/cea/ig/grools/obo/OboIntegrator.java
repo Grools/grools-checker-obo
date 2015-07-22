@@ -46,28 +46,32 @@ import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.*;
-import java.net.URL;
 import java.nio.charset.Charset;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  *
  */
 /*
  * @startuml
- * class Integrator{
+ * class OboIntegrator{
  *  -kieSession :  KieSession
  * }
  * @enduml
  */
-public class Integrator {
+public class OboIntegrator {
     private static  final int    BUFFER                     = 8192;
-    private static  final Logger LOG                        = (Logger) LoggerFactory.getLogger(Integrator.class);
+    private static  final Logger LOG                        = (Logger) LoggerFactory.getLogger(OboIntegrator.class);
     private         final Grools grools;
+
+    @NotNull
+    private InputStream getFile(@NotNull final String fileName) {
+        ClassLoader classLoader = getClass().getClassLoader();
+
+        return classLoader.getResourceAsStream(fileName);
+
+    }
 
     private static long countOccurences(@NotNull String s, char c){
         return s.chars().filter(ch -> ch == c).count();
@@ -79,14 +83,14 @@ public class Integrator {
     }
 
     @NotNull
-    public static Map<String,String> unipathwayToMetacyc(@NotNull final String metacycMappingFileName){
+    public static Map<String,String> unipathwayToMetacyc(@NotNull final InputStream metacycMappingFileName){
         final Map<String,String>    mapping         = new HashMap<>();
         BufferedReader              br              = null;
         InputStreamReader           isr             = null;
         String                      line            = "";
         String[]                    currentValues   = null;
         try {
-            isr         = new InputStreamReader( new FileInputStream(metacycMappingFileName), Charset.forName("US-ASCII") );
+            isr         = new InputStreamReader( metacycMappingFileName, Charset.forName("US-ASCII") );
             br          = new BufferedReader(isr, BUFFER);
             line        = br.readLine();
             while( line != null ){
@@ -184,25 +188,21 @@ public class Integrator {
         }
     }
 
-    public Integrator(final Grools grools) {
+    public OboIntegrator(final Grools grools) {
         this.grools = grools;
     }
 
     public void useDefault() throws IOException, ParseException {
-        final String obo = Thread.currentThread().getContextClassLoader()
-                                                 .getResource("unipathway.obo")
-                                                 .getPath();
-        final String map = Thread.currentThread().getContextClassLoader()
-                                                 .getResource("unipathway2metacyc.tsv")
-                                                 .getPath();
+        final InputStream obo = getFile("unipathway.obo");
+        final InputStream map = getFile("unipathway2metacyc.tsv");
         use( obo, unipathwayToMetacyc(map) );
     }
 
-    public void use( @NotNull final String oboFileName, @NotNull final Map<String,String> termToMetacyc  ) throws ParseException,IOException {
+    public void use( @NotNull final InputStream oboFileName, @NotNull final Map<String,String> termToMetacyc  ) throws ParseException,IOException {
         use(oboFileName, termToMetacyc, "Unipathway");
     }
 
-    public void use( @NotNull final String oboFileName, @NotNull final Map<String,String> termToMetacyc, @NotNull final String source ) throws ParseException,IOException {
+    public void use( @NotNull final InputStream oboFileName, @NotNull final Map<String,String> termToMetacyc, @NotNull final String source ) throws ParseException,IOException {
         final OboParser oboParser = new OboParser( oboFileName );
         for( final UPA upa: oboParser.getPathways()){
             final String  process = processId( upa.getId() );

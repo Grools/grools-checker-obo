@@ -36,12 +36,11 @@
 import fr.cea.ig.grools.Grools;
 import fr.cea.ig.grools.model.PriorKnowledge;
 import fr.cea.ig.grools.model.NodeType;
-import fr.cea.ig.grools.obo.Integrator;
+import fr.cea.ig.grools.obo.OboIntegrator;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.URL;
 import java.text.ParseException;
 import java.util.List;
 
@@ -49,19 +48,19 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 
-public class IntegratorTest {
+public class OboIntegratorTest {
 
     private Grools grools;
-    private Integrator integrator;
+    private OboIntegrator oboIntegrator;
 
     @Before
     public void setUp(){
         grools = new Grools();
         assertNotNull(grools);
-        integrator = new Integrator(grools);
-        assertNotNull(integrator);
+        oboIntegrator = new OboIntegrator(grools);
+        assertNotNull(oboIntegrator);
         try {
-            integrator.useDefault();
+            oboIntegrator.useDefault();
         } catch (ParseException e) {
             e.printStackTrace();
         } catch (IOException e) {

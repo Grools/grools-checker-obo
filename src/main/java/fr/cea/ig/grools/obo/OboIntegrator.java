@@ -140,7 +140,7 @@ public class OboIntegrator {
 
         if( unit.is(UPA.class) ){
             for(final Relation is_a : ((UPA)term).getIsA()){
-                fr.cea.ig.grools.model.Relation r = new fr.cea.ig.grools.model.Relation("is_a", processId(is_a.getIdLeft()), process);
+                final fr.cea.ig.grools.model.Relation r = new fr.cea.ig.grools.model.Relation("is_a", processId(is_a.getIdLeft()), process);
                 grools.insert(r);
             }
         }
@@ -157,7 +157,7 @@ public class OboIntegrator {
                                                                                       .setId(kId)
                                                                                       .setSource(source)
                                                                                       .addPartOf(bk)
-                                                                                      .setPresence(FourState.TRUE)
+                                                                                      .setPresence(FourState.UNKNOWN)
                                                                                       .setNodeType(NodeType.AND)
                                                                                       .setSource(source)
                                                                                       .create();
@@ -168,7 +168,7 @@ public class OboIntegrator {
                                                                                                .setId(processId(child.getId()))
                                                                                                .setSource(source)
                                                                                                .addPartOf(bioKnowledgeVariant)
-                                                                                               .setPresence(FourState.TRUE);
+                                                                                               .setPresence(FourState.UNKNOWN);
                         pathwayIntegrator(grools, termToMetacyc, child, bioknowledgeChild, source);
                     }
                 }
@@ -179,7 +179,7 @@ public class OboIntegrator {
                                                                                            .setId(processId(child.getId()))
                                                                                            .setSource(source)
                                                                                            .addPartOf(bk)
-                                                                                           .setPresence(FourState.TRUE);
+                                                                                           .setPresence(FourState.UNKNOWN);
 
                     pathwayIntegrator(grools, termToMetacyc, child, bioknowledgeChild, source);
                 }
@@ -208,7 +208,7 @@ public class OboIntegrator {
             final String  process = processId( upa.getId() );
             final BioKnowledgeBuilder bioKnowledge = new BioKnowledgeBuilder().setName(upa.getName())
                                                                               .setId(process)
-                                                                              .setPresence(FourState.TRUE)
+                                                                              .setPresence(FourState.UNKNOWN)
                                                                               .setSource(source);
             pathwayIntegrator(grools, termToMetacyc, upa, bioKnowledge, source );
 

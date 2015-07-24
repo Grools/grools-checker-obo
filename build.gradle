@@ -21,7 +21,7 @@ apply plugin: 'com.bmuschko.nexus'
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
-version     = '1.0'
+version     = '1.0.1'
 group       = 'fr.cea.ig'
 description = projectDescription
 
@@ -38,8 +38,8 @@ dependencies {
     compile     group: 'ch.qos.logback'     , name: 'logback-classic' , version: '1.1.2'
     compile     group: 'org.drools'         , name: 'drools-compiler' , version: droolsVersion
     compile     group: 'fr.cea.ig'          , name: 'grools-checker'  , version: '1.0'
-    compile     group: 'fr.cea.ig'          , name: 'obo-parser'      , version: '0.2.0'
-    compile     group: 'fr.cea.ig'          , name: 'obo-model'       , version: '0.2.2'
+    compile     group: 'fr.cea.ig'          , name: 'obo-parser'      , version: '0.2.1'
+    compile     group: 'fr.cea.ig'          , name: 'obo-model'       , version: '0.2.3'
 }
 
 jar {

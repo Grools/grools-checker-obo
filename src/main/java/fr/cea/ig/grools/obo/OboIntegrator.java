@@ -35,20 +35,21 @@ package fr.cea.ig.grools.obo;
 
 
 import ch.qos.logback.classic.Logger;
+import fr.cea.ig.grools.Integrator;
+import fr.cea.ig.grools.Reasoner;
+import fr.cea.ig.grools.fact.*;
+import fr.cea.ig.grools.fact.Relation;
 import fr.cea.ig.io.model.obo.*;
 import fr.cea.ig.io.parser.OboParser;
-import fr.cea.ig.grools.Grools;
-import fr.cea.ig.grools.biology.BioKnowledgeBuilder;
-import fr.cea.ig.grools.biology.BioPriorKnowledge;
-import fr.cea.ig.grools.model.FourState;
-import fr.cea.ig.grools.model.NodeType;
+import lombok.Getter;
+import lombok.NonNull;
 import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.*;
 import java.nio.charset.Charset;
-import java.text.ParseException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  *
@@ -60,44 +61,61 @@ import java.util.*;
  * }
  * @enduml
  */
-public class OboIntegrator {
-    private static  final int    BUFFER                     = 8192;
-    private static  final Logger LOG                        = (Logger) LoggerFactory.getLogger(OboIntegrator.class);
-    private         final Grools grools;
+public class OboIntegrator implements Integrator {
+    private static final int PAGE_SIZE              = 4_096;
+    private static final int DEFAULT_NUMBER_PAGE    = 10;
+    private static final String     SOURCE = "Unipathway OBO 09/06/15";
+    private static final Logger     LOG     = (Logger) LoggerFactory.getLogger(OboIntegrator.class);
+    private        final Reasoner   grools;
+    private        final String     source;
+    private        final Map<String, Set<UER>> metacycToUER;
 
-    @NotNull
-    private InputStream getFile(@NotNull final String fileName) {
-        ClassLoader classLoader = getClass().getClassLoader();
+    @NonNull
+    private final InputStream obo;
 
+
+    @NonNull
+    @Getter
+    private final OboParser oboParser;
+
+    @NonNull
+    private static InputStream getFile(@NonNull final String fileName) {
+        ClassLoader classLoader = OboIntegrator.class.getClassLoader();
         return classLoader.getResourceAsStream(fileName);
-
     }
 
-    private static long countOccurences(@NotNull String s, char c){
+    private static long countOccurences(@NonNull String s, char c){
         return s.chars().filter(ch -> ch == c).count();
     }
 
-    @NotNull
-    private static String processId( @NotNull final String id ){
+    @NonNull
+    private static String processId( @NonNull final String id ){
         return id.replace("UPa:", "");
     }
 
-    @NotNull
-    public static Map<String,String> unipathwayToMetacyc(@NotNull final InputStream metacycMappingFileName){
-        final Map<String,String>    mapping         = new HashMap<>();
+
+    @NonNull
+    public static Map<String,Set<UER>> metacycToUER(@NonNull final InputStream metacycMappingFileName, @NonNull final OboParser oboParser){
+
+        final Map<String,Set<UER>> mapping         = new HashMap<>();
         BufferedReader              br              = null;
         InputStreamReader           isr             = null;
         String                      line            = "";
         String[]                    currentValues   = null;
         try {
             isr         = new InputStreamReader( metacycMappingFileName, Charset.forName("US-ASCII") );
-            br          = new BufferedReader(isr, BUFFER);
+            br          = new BufferedReader(isr, PAGE_SIZE * DEFAULT_NUMBER_PAGE );
             line        = br.readLine();
             while( line != null ){
-                if( line.startsWith("UPA")){
+                if(  line.charAt(0) != '*'){
                     currentValues = line.split("\t");
                     assert currentValues.length == 4;
-                    mapping.put(currentValues[2],currentValues[3]);
+                    Set<UER> values = mapping.get(currentValues[3]);
+                    if( values == null) {
+                        values = new HashSet<>();
+                        mapping.put(currentValues[3], values);
+                    }
+                    values.add((UER) oboParser.getTerm("UPa:"+currentValues[2]));
                 }
                 line        = br.readLine();
             }
@@ -116,102 +134,115 @@ public class OboIntegrator {
         return  mapping;
     }
 
-    private static void pathwayIntegrator( @NotNull final Grools grools, @NotNull final Map<String,String> termToMetacyc, @NotNull final Term term, BioKnowledgeBuilder bioKnowledge, @NotNull final String source ){
-        final String                process     = processId(term.getId());
-        final List<Variant>         variants    = new ArrayList<>();
-        final UnipathwayUnit unit = new UnipathwayUnit(term);
-        Variant.getVariant( ((TermRelations)term).getChilds() , variants);
-//        LOG.info(term.getClass().toString());
-        if( variants.size() == 1 ) {
-            if( unit.is(UER.class) ) {
-                bioKnowledge = bioKnowledge.setNodeType(NodeType.LEAF);
-                final String tId = processId(term.getId());
-                final String kId = termToMetacyc.get(tId);
-                if( kId != null )
-                    bioKnowledge = bioKnowledge.setId(kId);
-                else
-                    LOG.warn("The process: " + tId + " do not have a corresponding metacyc process!");
-            }
-            else
-                bioKnowledge = bioKnowledge.setNodeType(NodeType.AND);
+    private PriorKnowledge getPriorKnowledge(@NotNull final Term term){
+        PriorKnowledge pk = grools.getPriorKnowledge(term.getId());
+        if( pk == null ){
+            pk = PriorKnowledgeImpl.builder()
+                    .name(term.getId())
+                    .label(term.getName())
+                    .source(source)
+                    .description(term.getDefinition())
+                    .build();
+            grools.insert(pk);
         }
-        else if( variants.size() > 1 )
-            bioKnowledge = bioKnowledge.setNodeType(NodeType.OR);
+        return pk;
+    }
 
-        if( unit.is(UPA.class) ){
-            for(final Relation is_a : ((UPA)term).getIsA()){
-                final fr.cea.ig.grools.model.Relation r = new fr.cea.ig.grools.model.Relation("is_a", processId(is_a.getIdLeft()), process);
-                grools.insert(r);
-            }
-        }
+    public OboIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
+        obo         = getFile( "unipathway.obo" );
+        oboParser   =  new OboParser( obo );
+        grools      = reasoner;
+        source      = SOURCE;
+        metacycToUER= metacycToUER( getFile("unipathway2metacyc.tsv"),oboParser );
+    }
 
-        final BioPriorKnowledge  bk  = bioKnowledge.create();
-//        LOG.info(bk.toString());
-        grools.insert(bk);
+    public OboIntegrator( @NonNull final Reasoner reasoner,  @NonNull final File oboFile, @NotNull final String source_description ) throws Exception {
+        obo         = new FileInputStream( oboFile );
+        oboParser   = new OboParser( obo );
+        grools      = reasoner;
+        source      = source_description;
+        metacycToUER= metacycToUER( getFile("unipathway2metacyc.tsv"),oboParser );
+    }
 
-        if( bk.getNodeType() != NodeType.LEAF ){
-            if( variants.size() > 1) {
-                for (Integer stepNum = 1; stepNum <= variants.size(); stepNum++) {
-                    final String kId = (bk.getNodeType() == NodeType.AND) ? process : process + "-alt-" + stepNum.toString();
-                    final BioPriorKnowledge bioKnowledgeVariant = new BioKnowledgeBuilder().setName(term.getName())
-                                                                                      .setId(kId)
-                                                                                      .setSource(source)
-                                                                                      .addPartOf(bk)
-                                                                                      .setPresence(FourState.UNKNOWN)
-                                                                                      .setNodeType(NodeType.AND)
-                                                                                      .setSource(source)
-                                                                                      .create();
-//                    LOG.info(bioKnowledgeVariant.toString());
-                    grools.insert(bioKnowledgeVariant);
-                    for (final Term child : variants.get(stepNum - 1)) {
-                        final BioKnowledgeBuilder bioknowledgeChild = new BioKnowledgeBuilder().setName(child.getName())
-                                                                                               .setId(processId(child.getId()))
-                                                                                               .setSource(source)
-                                                                                               .addPartOf(bioKnowledgeVariant)
-                                                                                               .setPresence(FourState.UNKNOWN);
-                        pathwayIntegrator(grools, termToMetacyc, child, bioknowledgeChild, source);
+
+    @Override
+    public void integration() {
+        final Iterator<Map.Entry<String, Term>> it = oboParser.iterator();
+        while( it.hasNext() ){
+            final Map.Entry<String, Term>   entry   = it.next();
+            final Term                      term    = entry.getValue();
+            final PriorKnowledge            parent  = getPriorKnowledge( term );
+
+            if( term instanceof TermRelations ) {
+                final TermRelations tr = (TermRelations) term;
+
+                if( tr instanceof UPA){
+                    final UPA upa = (UPA) tr;
+                    for(final fr.cea.ig.io.model.obo.Relation isA : upa.getIsA() ){
+                        final Term              termType    = oboParser.getTerm(isA.getIdLeft());
+                        final PriorKnowledge    pkType      = getPriorKnowledge(termType);
+                        final Relation          relType     = new RelationImpl(parent, pkType, RelationType.SUBTYPE);
+                        grools.insert(relType);
+                    }
+                    if( upa.getSuperPathway() != null ){
+                        final Term              superPath   = oboParser.getTerm( upa.getSuperPathway().getIdLeft() );
+                        final PriorKnowledge    pkSuperPath = getPriorKnowledge(superPath);
+                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.PART);
+                        grools.insert(relSuperPath);
+                    }
+                }
+
+                final List<Variant> variants = new ArrayList<>();
+                Variant.getVariant(tr.getChildren(), variants);
+                if( variants.size() > 1) {
+                    int i = 1;
+                    for (final Variant variant : variants) {
+                        final String            name= term.getName() + "-variant-" + String.valueOf(i);
+                        final PriorKnowledge    v   = PriorKnowledgeImpl.builder()
+                                                                        .name(name)
+                                                                        .label(term.getName())
+                                                                        .source(source)
+                                                                        .build();
+                        final Relation rel = new RelationImpl(v, parent, RelationType.SUBTYPE);
+                        grools.insert(v, rel);
+                        for (final Term child : variant) {
+                            final PriorKnowledge pkChild = getPriorKnowledge(child);
+                            final Relation relChild = new RelationImpl(pkChild, v, RelationType.PART);
+                            grools.insert(relChild);
+                        }
+                        i++;
+                    }
+                }
+                else{
+                    for (final Variant variant : variants) {
+                        for (final Term child : variant) {
+                            final PriorKnowledge pkChild = getPriorKnowledge(child);
+                            final Relation relChild = new RelationImpl(pkChild, parent, RelationType.PART);
+                            grools.insert(relChild);
+                        }
                     }
                 }
             }
-            else if( variants.size() == 1 ){
-                for (final Term child : variants.get(0)) {
-                    final BioKnowledgeBuilder bioknowledgeChild = new BioKnowledgeBuilder().setName(child.getName())
-                                                                                           .setId(processId(child.getId()))
-                                                                                           .setSource(source)
-                                                                                           .addPartOf(bk)
-                                                                                           .setPresence(FourState.UNKNOWN);
+        }
+    }
 
-                    pathwayIntegrator(grools, termToMetacyc, child, bioknowledgeChild, source);
-                }
-
+    @Override
+    public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed(@NonNull final String source, @NonNull final String id) {
+        Set<PriorKnowledge> results;
+        results = oboParser.stream().filter( entry -> entry.getValue().getXref(source) != null )
+                                    .filter( entry -> entry.getValue().getXref(source).stream().anyMatch( ref -> ref.getId().equals(id)))
+                                    .map( entry -> getPriorKnowledge(entry.getValue()))
+                                    .collect(Collectors.toSet());
+        if( source.equals("METACYC") && metacycToUER.containsKey(id)){
+            for( final UER uer : metacycToUER.get(id) ){
+                PriorKnowledge pk = getPriorKnowledge(uer);
+                results.add(pk);
             }
+//            results.addAll( metacycToUER.get(id)
+//                                        .stream()
+//                                        .map(this::getPriorKnowledge)
+//                                        .collect(Collectors.toSet()) );
         }
-    }
-
-    public OboIntegrator(final Grools grools) {
-        this.grools = grools;
-    }
-
-    public void useDefault() throws IOException, ParseException {
-        final InputStream obo = getFile("unipathway.obo");
-        final InputStream map = getFile("unipathway2metacyc.tsv");
-        use( obo, unipathwayToMetacyc(map) );
-    }
-
-    public void use( @NotNull final InputStream oboFileName, @NotNull final Map<String,String> termToMetacyc  ) throws ParseException,IOException {
-        use(oboFileName, termToMetacyc, "Unipathway");
-    }
-
-    public void use( @NotNull final InputStream oboFileName, @NotNull final Map<String,String> termToMetacyc, @NotNull final String source ) throws ParseException,IOException {
-        final OboParser oboParser = new OboParser( oboFileName );
-        for( final UPA upa: oboParser.getPathways()){
-            final String  process = processId( upa.getId() );
-            final BioKnowledgeBuilder bioKnowledge = new BioKnowledgeBuilder().setName(upa.getName())
-                                                                              .setId(process)
-                                                                              .setPresence(FourState.UNKNOWN)
-                                                                              .setSource(source);
-            pathwayIntegrator(grools, termToMetacyc, upa, bioKnowledge, source );
-
-        }
+        return results;
     }
 }

@@ -197,7 +197,7 @@ public class OboIntegrator implements Integrator {
                 if( variants.size() > 1) {
                     int i = 1;
                     for (final Variant variant : variants) {
-                        final String            name= term.getName() + "-variant-" + String.valueOf(i);
+                        final String            name= "variant-" + String.valueOf(i)+'-'+term.getName();
                         final PriorKnowledge    v   = PriorKnowledgeImpl.builder()
                                                                         .name(name)
                                                                         .label(term.getName())

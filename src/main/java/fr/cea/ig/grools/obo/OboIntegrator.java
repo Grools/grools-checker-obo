@@ -230,10 +230,18 @@ public class OboIntegrator implements Integrator {
     public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed(@NonNull final String source, @NonNull final String id) {
         Set<PriorKnowledge> results;
         results = oboParser.stream().filter( entry -> entry.getValue().getXref(source) != null )
-                                    .filter( entry -> entry.getValue().getXref(source).stream().anyMatch( ref -> ref.getId().equals(id)))
+                                    .filter( entry -> entry.getValue().getXref(source).stream()
+                                                                                      .anyMatch( ref -> {
+                                                                                                            boolean hasMatch = false;
+                                                                                                            if(source.equals("EC"))
+                                                                                                                hasMatch = (ref.getId().equals(id) || ref.getId().startsWith(id + '.'));
+                                                                                                            else
+                                                                                                                hasMatch = ref.getId().equals(id);
+                                                                                                            return hasMatch;
+                                                                                                        }))
                                     .map( entry -> getPriorKnowledge(entry.getValue()))
                                     .collect(Collectors.toSet());
-        if( source.equals("METACYC") && metacycToUER.containsKey(id)){
+        if( source.equals("METACYC") && results.isEmpty() && metacycToUER.containsKey(id)){
             for( final UER uer : metacycToUER.get(id) ){
                 PriorKnowledge pk = getPriorKnowledge(uer);
                 results.add(pk);

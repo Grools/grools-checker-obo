@@ -68,20 +68,20 @@ public class OboIntegratorTest {
 
     @Test
     public void testPathwayIntegration(){
-        final PriorKnowledge isA   = grools.getPriorKnowledge("UPa:UPA00404");
+        final PriorKnowledge isA   = grools.getPriorKnowledge("UPA00404");
 
         assertNotNull(isA);
-        assertTrue(isA.getName().equals("UPa:UPA00404"));
+        assertTrue(isA.getName().equals("UPA00404"));
 
-        final PriorKnowledge superPathway   = grools.getPriorKnowledge("UPa:UPA00402");
+        final PriorKnowledge superPathway   = grools.getPriorKnowledge("UPA00402");
 
         assertNotNull(superPathway);
-        assertTrue(superPathway.getName().equals("UPa:UPA00402"));
+        assertTrue(superPathway.getName().equals("UPA00402"));
 
-        final PriorKnowledge upa33      = grools.getPriorKnowledge("UPa:UPA00033");
+        final PriorKnowledge upa33      = grools.getPriorKnowledge("UPA00033");
 
         assertNotNull(upa33);
-        assertTrue(upa33.getName().equals("UPa:UPA00033"));
+        assertTrue(upa33.getName().equals("UPA00033"));
 
         Relation relIsA = grools.getRelation(upa33, isA, RelationType.SUBTYPE);
         assertNotNull(relIsA);
@@ -94,10 +94,10 @@ public class OboIntegratorTest {
         assertNotNull(relPath);
         assertEquals(2, relPath.size());
 
-        final PriorKnowledge uls12      = grools.getPriorKnowledge("UPa:ULS00012");
+        final PriorKnowledge uls12      = grools.getPriorKnowledge("ULS00012");
 
         assertNotNull(uls12);
-        assertTrue(uls12.getName().equals("UPa:ULS00012"));
+        assertTrue(uls12.getName().equals("ULS00012"));
 
         Set<Relation> relVariantPath1 = grools.getRelationsWithSource(uls12);
         assertNotNull(relVariantPath1);
@@ -123,12 +123,12 @@ public class OboIntegratorTest {
 
     @Test
     public void testXref(){
-        final UPA                   upa33   = (UPA) oboIntegrator.getOboParser().getTerm("UPa:UPA00033");
-        final UER                   uer28   = (UER) oboIntegrator.getOboParser().getTerm("UPa:UER00028");
-        final PriorKnowledge        pk33    = grools.getPriorKnowledge("UPa:UPA00033");
-        final PriorKnowledge        pk28    = grools.getPriorKnowledge("UPa:UER00028");
+        final UPA                   upa33   = (UPA) oboIntegrator.getOboParser().getTerm("UPA00033");
+        final UER                   uer28   = (UER) oboIntegrator.getOboParser().getTerm("UER00028");
+        final PriorKnowledge        pk33    = grools.getPriorKnowledge("UPA00033");
+        final PriorKnowledge        pk28    = grools.getPriorKnowledge("UER00028");
         final Set<PriorKnowledge>   results1= oboIntegrator.getPriorKnowledgeRelatedToObservationNamed("KEGG", "map00300" );
-        final Set<PriorKnowledge>   results2= oboIntegrator.getPriorKnowledgeRelatedToObservationNamed("METACYC", "HOMOCITRATE-SYNTHASE-RXN" );
+        final Set<PriorKnowledge>   results2= oboIntegrator.getPriorKnowledgeRelatedToObservationNamed("EC", "2.3.3.14" );
         assertNotNull(upa33);
         assertNotNull(uer28);
         assertNotNull(results1);

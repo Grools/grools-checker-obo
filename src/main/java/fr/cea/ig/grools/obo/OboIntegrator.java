@@ -187,7 +187,8 @@ public class OboIntegrator implements Integrator {
                     if( upa.getSuperPathway() != null ){
                         final Term              superPath   = oboParser.getTerm( upa.getSuperPathway().getIdLeft() );
                         final PriorKnowledge    pkSuperPath = getPriorKnowledge(superPath);
-                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.PART);
+//                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.PART);
+                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.SUBTYPE); // should be part but unipathway use super pathway definition inconsistently
                         grools.insert(relSuperPath);
                     }
                 }
@@ -197,7 +198,7 @@ public class OboIntegrator implements Integrator {
                 if( variants.size() > 1) {
                     int i = 1;
                     for (final Variant variant : variants) {
-                        final String            name= "variant-" + String.valueOf(i)+'-'+term.getName();
+                        final String            name= "variant-" + String.valueOf(i)+'-'+term.getId();
                         final PriorKnowledge    v   = PriorKnowledgeImpl.builder()
                                                                         .name(name)
                                                                         .label(term.getName())

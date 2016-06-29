@@ -86,7 +86,8 @@ public class OboIntegratorTest {
         Relation relIsA = grools.getRelation(upa33, isA, RelationType.SUBTYPE);
         assertNotNull(relIsA);
 
-        Relation relSuperPath = grools.getRelation(upa33, superPathway, RelationType.PART);
+        //Relation relSuperPath = grools.getRelation(upa33, superPathway, RelationType.PART); // wrong usage of superpathway definition from unipathway
+        Relation relSuperPath = grools.getRelation(upa33, superPathway, RelationType.SUBTYPE);
         assertNotNull(relSuperPath);
 
 

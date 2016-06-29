@@ -115,7 +115,7 @@ public class OboIntegrator implements Integrator {
                         values = new HashSet<>();
                         mapping.put(currentValues[3], values);
                     }
-                    values.add((UER) oboParser.getTerm("UPa:"+currentValues[2]));
+                    values.add((UER) oboParser.getTerm( currentValues[2] ));
                 }
                 line        = br.readLine();
             }
@@ -137,11 +137,12 @@ public class OboIntegrator implements Integrator {
     private PriorKnowledge getPriorKnowledge(@NotNull final Term term){
         PriorKnowledge pk = grools.getPriorKnowledge(term.getId());
         if( pk == null ){
+            final String desc = (term.getDefinition() == null || term.getDefinition().isEmpty() )? term.getName() : term.getName()+":"+term.getDefinition();
             pk = PriorKnowledgeImpl.builder()
                     .name(term.getId())
                     .label(term.getName())
                     .source(source)
-                    .description(term.getDefinition())
+                    .description(desc)
                     .build();
             grools.insert(pk);
         }
@@ -242,7 +243,7 @@ public class OboIntegrator implements Integrator {
                                                                                                         }))
                                     .map( entry -> getPriorKnowledge(entry.getValue()))
                                     .collect(Collectors.toSet());
-        if( source.equals("METACYC") && results.isEmpty() && metacycToUER.containsKey(id)){
+        if( source.equals("MetaCyc") && results.isEmpty() && metacycToUER.containsKey(id)){
             for( final UER uer : metacycToUER.get(id) ){
                 PriorKnowledge pk = getPriorKnowledge(uer);
                 results.add(pk);

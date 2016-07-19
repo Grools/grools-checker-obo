@@ -230,28 +230,37 @@ public class OboIntegrator implements Integrator {
 
     @Override
     public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed(@NonNull final String source, @NonNull final String id) {
-        Set<PriorKnowledge> results;
-        results = oboParser.stream().filter( entry -> entry.getValue().getXref(source) != null )
-                                    .filter( entry -> entry.getValue().getXref(source).stream()
-                                                                                      .anyMatch( ref -> {
-                                                                                                            boolean hasMatch = false;
-                                                                                                            if(source.equals("EC"))
-                                                                                                                hasMatch = (ref.getId().equals(id) || ref.getId().startsWith(id + '.'));
-                                                                                                            else
-                                                                                                                hasMatch = ref.getId().equals(id);
-                                                                                                            return hasMatch;
-                                                                                                        }))
-                                    .map( entry -> getPriorKnowledge(entry.getValue()))
-                                    .collect(Collectors.toSet());
-        if( source.equals("MetaCyc") && results.isEmpty() && metacycToUER.containsKey(id)){
-            for( final UER uer : metacycToUER.get(id) ){
-                PriorKnowledge pk = getPriorKnowledge(uer);
+        Set<PriorKnowledge> results = null;
+        if( id.startsWith("UPA") ){
+            final PriorKnowledge pk = grools.getPriorKnowledge(id);
+            if( pk != null ) {
+                results = new HashSet<>();
                 results.add(pk);
             }
+        }
+        else {
+            results = oboParser.stream().filter(entry -> entry.getValue().getXref(source) != null)
+                               .filter(entry -> entry.getValue().getXref(source).stream()
+                                                     .anyMatch(ref -> {
+                                                         boolean hasMatch = false;
+                                                         if ( source.equals("EC") )
+                                                             hasMatch = ( ref.getId().equals(id) || ref.getId().startsWith(id + '.') );
+                                                         else
+                                                             hasMatch = ref.getId().equals(id);
+                                                         return hasMatch;
+                                                     }))
+                               .map(entry -> getPriorKnowledge(entry.getValue()))
+                               .collect(Collectors.toSet());
+            if ( source.equals("MetaCyc") && results.isEmpty() && metacycToUER.containsKey(id) ) {
+                for ( final UER uer : metacycToUER.get(id) ) {
+                    PriorKnowledge pk = getPriorKnowledge(uer);
+                    results.add(pk);
+                }
 //            results.addAll( metacycToUER.get(id)
 //                                        .stream()
 //                                        .map(this::getPriorKnowledge)
 //                                        .collect(Collectors.toSet()) );
+            }
         }
         return results;
     }

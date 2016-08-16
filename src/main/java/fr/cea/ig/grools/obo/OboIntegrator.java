@@ -37,18 +37,35 @@ package fr.cea.ig.grools.obo;
 import ch.qos.logback.classic.Logger;
 import fr.cea.ig.grools.Integrator;
 import fr.cea.ig.grools.Reasoner;
-import fr.cea.ig.grools.fact.*;
+import fr.cea.ig.grools.fact.PriorKnowledge;
+import fr.cea.ig.grools.fact.PriorKnowledgeImpl;
 import fr.cea.ig.grools.fact.Relation;
-import fr.cea.ig.io.model.obo.*;
-import fr.cea.ig.io.parser.OboParser;
+import fr.cea.ig.grools.fact.RelationImpl;
+import fr.cea.ig.grools.fact.RelationType;
+import fr.cea.ig.io.reader.OboParser;
+import fr.cea.ig.model.obo.Term;
+import fr.cea.ig.model.obo.TermRelations;
+import fr.cea.ig.model.obo.UER;
+import fr.cea.ig.model.obo.UPA;
+import fr.cea.ig.model.obo.Variant;
 import lombok.Getter;
 import lombok.NonNull;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -62,199 +79,201 @@ import java.util.stream.Collectors;
  * @enduml
  */
 public class OboIntegrator implements Integrator {
-    private static final int PAGE_SIZE              = 4_096;
-    private static final int DEFAULT_NUMBER_PAGE    = 10;
-    private static final String     SOURCE = "Unipathway OBO 09/06/15";
-    private static final Logger     LOG     = (Logger) LoggerFactory.getLogger(OboIntegrator.class);
-    private        final Reasoner   grools;
-    private        final String     source;
-    private        final Map<String, Set<UER>> metacycToUER;
-
+    private static final int    PAGE_SIZE           = 4_096;
+    private static final int    DEFAULT_NUMBER_PAGE = 10;
+    private static final String SOURCE              = "Unipathway OBO 09/06/15";
+    private static final Logger LOG                 = ( Logger ) LoggerFactory.getLogger( OboIntegrator.class );
+    private final Reasoner              grools;
+    private final String                source;
+    private final Map<String, Set<UER>> metacycToUER;
+    
     @NonNull
     private final InputStream obo;
-
-
+    
+    
     @NonNull
     @Getter
     private final OboParser oboParser;
-
+    
     @NonNull
-    private static InputStream getFile(@NonNull final String fileName) {
-        ClassLoader classLoader = OboIntegrator.class.getClassLoader();
-        return classLoader.getResourceAsStream(fileName);
+    private static InputStream getFile( @NonNull final String fileName ) {
+        ClassLoader classLoader = OboIntegrator.class.getClassLoader( );
+        return classLoader.getResourceAsStream( fileName );
     }
-
-    private static long countOccurences(@NonNull String s, char c){
-        return s.chars().filter(ch -> ch == c).count();
+    
+    private static long countOccurences( @NonNull String s, char c ) {
+        return s.chars( ).filter( ch -> ch == c ).count( );
     }
-
+    
     @NonNull
-    private static String processId( @NonNull final String id ){
-        return id.replace("UPa:", "");
+    private static String processId( @NonNull final String id ) {
+        return id.replace( "UPa:", "" );
     }
-
-
+    
+    
     @NonNull
-    public static Map<String,Set<UER>> metacycToUER(@NonNull final InputStream metacycMappingFileName, @NonNull final OboParser oboParser){
-
-        final Map<String,Set<UER>> mapping         = new HashMap<>();
-        BufferedReader              br              = null;
-        InputStreamReader           isr             = null;
-        String                      line            = "";
-        String[]                    currentValues   = null;
+    public static Map<String, Set<UER>> metacycToUER( @NonNull final InputStream metacycMappingFileName, @NonNull final OboParser oboParser ) {
+        
+        final Map<String, Set<UER>> mapping       = new HashMap<>( );
+        BufferedReader              br            = null;
+        InputStreamReader           isr           = null;
+        String                      line          = "";
+        String[]                    currentValues = null;
         try {
-            isr         = new InputStreamReader( metacycMappingFileName, Charset.forName("US-ASCII") );
-            br          = new BufferedReader(isr, PAGE_SIZE * DEFAULT_NUMBER_PAGE );
-            line        = br.readLine();
-            while( line != null ){
-                if(  line.charAt(0) != '*'){
-                    currentValues = line.split("\t");
+            isr = new InputStreamReader( metacycMappingFileName, Charset.forName( "US-ASCII" ) );
+            br = new BufferedReader( isr, PAGE_SIZE * DEFAULT_NUMBER_PAGE );
+            line = br.readLine( );
+            while( line != null ) {
+                if( line.charAt( 0 ) != '*' ) {
+                    currentValues = line.split( "\t" );
                     assert currentValues.length == 4;
-                    Set<UER> values = mapping.get(currentValues[3]);
-                    if( values == null) {
-                        values = new HashSet<>();
-                        mapping.put(currentValues[3], values);
+                    Set<UER> values = mapping.get( currentValues[ 3 ] );
+                    if( values == null ) {
+                        values = new HashSet<>( );
+                        mapping.put( currentValues[ 3 ], values );
                     }
-                    values.add((UER) oboParser.getTerm( currentValues[2] ));
+                    values.add( ( UER ) oboParser.getTerm( currentValues[ 2 ] ) );
                 }
-                line        = br.readLine();
+                line = br.readLine( );
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        }
+        catch( IOException e ) {
+            e.printStackTrace( );
         }
         finally {
             if( br != null ) {
                 try {
-                    br.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
+                    br.close( );
+                }
+                catch( IOException e ) {
+                    e.printStackTrace( );
                 }
             }
         }
-        return  mapping;
+        return mapping;
     }
-
-    private PriorKnowledge getPriorKnowledge(@NotNull final Term term){
-        PriorKnowledge pk = grools.getPriorKnowledge(term.getId());
-        if( pk == null ){
-            final String desc = (term.getDefinition() == null || term.getDefinition().isEmpty() )? term.getName() : term.getName()+":"+term.getDefinition();
-            pk = PriorKnowledgeImpl.builder()
-                    .name(term.getId())
-                    .label(term.getName())
-                    .source(source)
-                    .description(desc)
-                    .build();
-            grools.insert(pk);
+    
+    private PriorKnowledge getPriorKnowledge( @NonNull final Term term ) {
+        PriorKnowledge pk = grools.getPriorKnowledge( term.getId( ) );
+        if( pk == null ) {
+            final String desc = ( term.getDefinition( ) == null || term.getDefinition( ).isEmpty( ) ) ? term.getName( ) : term.getName( ) + ":" + term.getDefinition( );
+            pk = PriorKnowledgeImpl.builder( )
+                                   .name( term.getId( ) )
+                                   .label( term.getName( ) )
+                                   .source( source )
+                                   .description( desc )
+                                   .build( );
+            grools.insert( pk );
         }
         return pk;
     }
-
+    
     public OboIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
-        obo         = getFile( "unipathway.obo" );
-        oboParser   =  new OboParser( obo );
-        grools      = reasoner;
-        source      = SOURCE;
-        metacycToUER= metacycToUER( getFile("unipathway2metacyc.tsv"),oboParser );
+        obo = getFile( "unipathway.obo" );
+        oboParser = new OboParser( obo );
+        grools = reasoner;
+        source = SOURCE;
+        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboParser );
     }
-
-    public OboIntegrator( @NonNull final Reasoner reasoner,  @NonNull final File oboFile, @NotNull final String source_description ) throws Exception {
-        obo         = new FileInputStream( oboFile );
-        oboParser   = new OboParser( obo );
-        grools      = reasoner;
-        source      = source_description;
-        metacycToUER= metacycToUER( getFile("unipathway2metacyc.tsv"),oboParser );
+    
+    public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description ) throws Exception {
+        obo = new FileInputStream( oboFile );
+        oboParser = new OboParser( obo );
+        grools = reasoner;
+        source = source_description;
+        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboParser );
     }
-
-
+    
+    
     @Override
-    public void integration() {
-        final Iterator<Map.Entry<String, Term>> it = oboParser.iterator();
-        while( it.hasNext() ){
-            final Map.Entry<String, Term>   entry   = it.next();
-            final Term                      term    = entry.getValue();
-            final PriorKnowledge            parent  = getPriorKnowledge( term );
-
+    public void integration( ) {
+        final Iterator<Map.Entry<String, Term>> it = oboParser.iterator( );
+        while( it.hasNext( ) ) {
+            final Map.Entry<String, Term> entry  = it.next( );
+            final Term                    term   = entry.getValue( );
+            final PriorKnowledge          parent = getPriorKnowledge( term );
+            
             if( term instanceof TermRelations ) {
-                final TermRelations tr = (TermRelations) term;
-
-                if( tr instanceof UPA){
-                    final UPA upa = (UPA) tr;
-                    for(final fr.cea.ig.io.model.obo.Relation isA : upa.getIsA() ){
-                        final Term              termType    = oboParser.getTerm(isA.getIdLeft());
-                        final PriorKnowledge    pkType      = getPriorKnowledge(termType);
-                        final Relation          relType     = new RelationImpl(parent, pkType, RelationType.SUBTYPE);
-                        grools.insert(relType);
+                final TermRelations tr = ( TermRelations ) term;
+                
+                if( tr instanceof UPA ) {
+                    final UPA upa = ( UPA ) tr;
+                    for( final fr.cea.ig.model.obo.Relation isA : upa.getIsA( ) ) {
+                        final Term           termType = oboParser.getTerm( isA.getIdLeft( ) );
+                        final PriorKnowledge pkType   = getPriorKnowledge( termType );
+                        final Relation       relType  = new RelationImpl( parent, pkType, RelationType.SUBTYPE );
+                        grools.insert( relType );
                     }
-                    if( upa.getSuperPathway() != null ){
-                        final Term              superPath   = oboParser.getTerm( upa.getSuperPathway().getIdLeft() );
-                        final PriorKnowledge    pkSuperPath = getPriorKnowledge(superPath);
+                    if( upa.getSuperPathway( ) != null ) {
+                        final Term           superPath   = oboParser.getTerm( upa.getSuperPathway( ).getIdLeft( ) );
+                        final PriorKnowledge pkSuperPath = getPriorKnowledge( superPath );
 //                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.PART);
-                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.SUBTYPE); // should be part but unipathway use super pathway definition inconsistently
-                        grools.insert(relSuperPath);
+                        final Relation relSuperPath = new RelationImpl( parent, pkSuperPath, RelationType.SUBTYPE ); // should be part but unipathway use super pathway definition inconsistently
+                        grools.insert( relSuperPath );
                     }
                 }
-
-                final List<Variant> variants = new ArrayList<>();
-                Variant.getVariant(tr.getChildren(), variants);
-                if( variants.size() > 1) {
+                
+                final List<Variant> variants = new ArrayList<>( );
+                Variant.getVariant( tr.getChildren( ), variants );
+                if( variants.size( ) > 1 ) {
                     int i = 1;
-                    for (final Variant variant : variants) {
-                        final String            name= "variant-" + String.valueOf(i)+'-'+term.getId();
-                        final PriorKnowledge    v   = PriorKnowledgeImpl.builder()
-                                                                        .name(name)
-                                                                        .label(term.getName())
-                                                                        .source(source)
-                                                                        .build();
-                        final Relation rel = new RelationImpl(v, parent, RelationType.SUBTYPE);
-                        grools.insert(v, rel);
-                        for (final Term child : variant) {
-                            final PriorKnowledge pkChild = getPriorKnowledge(child);
-                            final Relation relChild = new RelationImpl(pkChild, v, RelationType.PART);
-                            grools.insert(relChild);
+                    for( final Variant variant : variants ) {
+                        final String name = "variant-" + String.valueOf( i ) + '-' + term.getId( );
+                        final PriorKnowledge v = PriorKnowledgeImpl.builder( )
+                                                                   .name( name )
+                                                                   .label( term.getName( ) )
+                                                                   .source( source )
+                                                                   .build( );
+                        final Relation rel = new RelationImpl( v, parent, RelationType.SUBTYPE );
+                        grools.insert( v, rel );
+                        for( final Term child : variant ) {
+                            final PriorKnowledge pkChild  = getPriorKnowledge( child );
+                            final Relation       relChild = new RelationImpl( pkChild, v, RelationType.PART );
+                            grools.insert( relChild );
                         }
                         i++;
                     }
                 }
-                else{
-                    for (final Variant variant : variants) {
-                        for (final Term child : variant) {
-                            final PriorKnowledge pkChild = getPriorKnowledge(child);
-                            final Relation relChild = new RelationImpl(pkChild, parent, RelationType.PART);
-                            grools.insert(relChild);
+                else {
+                    for( final Variant variant : variants ) {
+                        for( final Term child : variant ) {
+                            final PriorKnowledge pkChild  = getPriorKnowledge( child );
+                            final Relation       relChild = new RelationImpl( pkChild, parent, RelationType.PART );
+                            grools.insert( relChild );
                         }
                     }
                 }
             }
         }
     }
-
+    
     @Override
-    public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed(@NonNull final String source, @NonNull final String id) {
+    public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed( @NonNull final String source, @NonNull final String id ) {
         Set<PriorKnowledge> results = null;
-        if( id.startsWith("UPA") ){
-            final PriorKnowledge pk = grools.getPriorKnowledge(id);
+        if( id.startsWith( "UPA" ) ) {
+            final PriorKnowledge pk = grools.getPriorKnowledge( id );
             if( pk != null ) {
-                results = new HashSet<>();
-                results.add(pk);
+                results = new HashSet<>( );
+                results.add( pk );
             }
         }
         else {
-            results = oboParser.stream().filter(entry -> entry.getValue().getXref(source) != null)
-                               .filter(entry -> entry.getValue().getXref(source).stream()
-                                                     .anyMatch(ref -> {
-                                                         boolean hasMatch = false;
-                                                         if ( source.equals("EC") )
-                                                             hasMatch = ( ref.getId().equals(id) || ref.getId().startsWith(id + '.') );
-                                                         else
-                                                             hasMatch = ref.getId().equals(id);
-                                                         return hasMatch;
-                                                     }))
-                               .map(entry -> getPriorKnowledge(entry.getValue()))
-                               .collect(Collectors.toSet());
-            if ( source.equals("MetaCyc") && results.isEmpty() && metacycToUER.containsKey(id) ) {
-                for ( final UER uer : metacycToUER.get(id) ) {
-                    PriorKnowledge pk = getPriorKnowledge(uer);
-                    results.add(pk);
+            results = oboParser.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
+                               .filter( entry -> entry.getValue( ).getXref( source ).stream( )
+                                                      .anyMatch( ref -> {
+                                                          boolean hasMatch = false;
+                                                          if( source.equals( "EC" ) )
+                                                              hasMatch = ( ref.getId( ).equals( id ) || ref.getId( ).startsWith( id + '.' ) );
+                                                          else
+                                                              hasMatch = ref.getId( ).equals( id );
+                                                          return hasMatch;
+                                                      } ) )
+                               .map( entry -> getPriorKnowledge( entry.getValue( ) ) )
+                               .collect( Collectors.toSet( ) );
+            if( source.equals( "MetaCyc" ) && results.isEmpty( ) && metacycToUER.containsKey( id ) ) {
+                for( final UER uer : metacycToUER.get( id ) ) {
+                    PriorKnowledge pk = getPriorKnowledge( uer );
+                    results.add( pk );
                 }
 //            results.addAll( metacycToUER.get(id)
 //                                        .stream()

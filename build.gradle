@@ -34,11 +34,11 @@ repositories {
 
 dependencies {
     testCompile group: 'junit'              , name: 'junit'                 , version: '4.11'
+    testCompile group: 'fr.cea.ig'          , name: 'grools-reasoner-engine', version: engineVersion
+    compile     group: 'fr.cea.ig'          , name: 'grools-checker'        , version: checkerVersion
     compile     group: 'org.projectlombok'  , name: 'lombok'                , version: lombokVersion
     compile     group: 'ch.qos.logback'     , name: 'logback-classic'       , version: logbackVersion
-    compile     group: 'fr.cea.ig'          , name: 'grools-checker'        , version: checkerVersion
-    compile     group: 'fr.cea.ig'          , name: 'grools-drools-checker' , version: droolsCheckerVersion
-    compile     group: 'fr.cea.ig'          , name: 'obo-parser'            , version: oboParserVersion
+    compile     group: 'fr.cea.ig'          , name: 'ig-io'                 , version: igioVersion
 }
 
 jar {

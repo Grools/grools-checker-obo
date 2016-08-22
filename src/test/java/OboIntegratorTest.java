@@ -33,14 +33,15 @@
  */
 
 
-import fr.cea.ig.grools.Reasoner;
+import fr.cea.ig.bio.model.obo.UER;
+import fr.cea.ig.bio.model.obo.UPA;
+import fr.cea.ig.grools.reasoner.Reasoner;
 import fr.cea.ig.grools.reasoner.ReasonerImpl;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import fr.cea.ig.grools.fact.Relation;
 import fr.cea.ig.grools.fact.RelationType;
 import fr.cea.ig.grools.obo.OboIntegrator;
-import fr.cea.ig.model.obo.UER;
-import fr.cea.ig.model.obo.UPA;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -122,8 +123,8 @@ public class OboIntegratorTest {
     
     @Test
     public void testXref( ) {
-        final UPA                 upa33    = ( UPA ) oboIntegrator.getOboParser( ).getTerm( "UPA00033" );
-        final UER                 uer28    = ( UER ) oboIntegrator.getOboParser( ).getTerm( "UER00028" );
+        final UPA                 upa33    = ( UPA ) oboIntegrator.getOboReader( ).getTerm( "UPA00033" );
+        final UER                 uer28    = ( UER ) oboIntegrator.getOboReader( ).getTerm( "UER00028" );
         final PriorKnowledge      pk33     = grools.getPriorKnowledge( "UPA00033" );
         final PriorKnowledge      pk28     = grools.getPriorKnowledge( "UER00028" );
         final Set<PriorKnowledge> results1 = oboIntegrator.getPriorKnowledgeRelatedToObservationNamed( "KEGG", "map00300" );

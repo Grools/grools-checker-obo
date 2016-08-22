@@ -22,23 +22,20 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 version     = '2.0.0'
-group       = 'fr.cea.ig'
+group       = theGroup
 description = projectDescription
 
 repositories {
     mavenLocal()
     mavenCentral()
-    maven { url "http://repository.jboss.org/nexus/content/groups/public" }
-    maven { url "https://gsphere.genoscope.cns.fr/nexus/content/groups/public" }
 }
 
 dependencies {
     testCompile group: 'junit'              , name: 'junit'                 , version: '4.11'
-    testCompile group: 'fr.cea.ig'          , name: 'grools-reasoner-engine', version: engineVersion
-    compile     group: 'fr.cea.ig'          , name: 'grools-checker'        , version: checkerVersion
+    compile     group: theGroup             , name: 'bio-scribe'            , version: bioScribeVersion
+    compile     group: theGroup             , name: 'grools-reasoner'       , version: groolsReasonerVersion
     compile     group: 'org.projectlombok'  , name: 'lombok'                , version: lombokVersion
     compile     group: 'ch.qos.logback'     , name: 'logback-classic'       , version: logbackVersion
-    compile     group: 'fr.cea.ig'          , name: 'ig-io'                 , version: igioVersion
 }
 
 jar {
@@ -103,9 +100,4 @@ extraArchive {
     sources  = true
     tests    = true
     javadoc  = true
-}
-nexus {
-    sign                  = false
-    repositoryUrl         = 'https://gsphere.genoscope.cns.fr/nexus/content/repositories/releases/'
-    snapshotRepositoryUrl = 'https://gsphere.genoscope.cns.fr/nexus/content/repositories/snapshots/'
 }

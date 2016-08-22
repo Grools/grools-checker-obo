@@ -13,10 +13,10 @@
 *.iml
 *.ipr
 *.iws
-build
 
 # gradle
 .gradle
+build
 
 
 # svg file

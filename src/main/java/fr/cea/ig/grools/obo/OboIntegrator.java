@@ -35,19 +35,19 @@ package fr.cea.ig.grools.obo;
 
 
 import ch.qos.logback.classic.Logger;
-import fr.cea.ig.grools.Integrator;
-import fr.cea.ig.grools.Reasoner;
+import fr.cea.ig.bio.model.obo.Term;
+import fr.cea.ig.bio.model.obo.TermRelations;
+import fr.cea.ig.bio.model.obo.UER;
+import fr.cea.ig.bio.model.obo.UPA;
+import fr.cea.ig.bio.model.obo.Variant;
+import fr.cea.ig.bio.scribe.OboReader;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import fr.cea.ig.grools.fact.PriorKnowledgeImpl;
 import fr.cea.ig.grools.fact.Relation;
 import fr.cea.ig.grools.fact.RelationImpl;
 import fr.cea.ig.grools.fact.RelationType;
-import fr.cea.ig.io.reader.OboParser;
-import fr.cea.ig.model.obo.Term;
-import fr.cea.ig.model.obo.TermRelations;
-import fr.cea.ig.model.obo.UER;
-import fr.cea.ig.model.obo.UPA;
-import fr.cea.ig.model.obo.Variant;
+import fr.cea.ig.grools.reasoner.Integrator;
+import fr.cea.ig.grools.reasoner.Reasoner;
 import lombok.Getter;
 import lombok.NonNull;
 import org.slf4j.LoggerFactory;
@@ -68,13 +68,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+
 /**
  *
  */
 /*
  * @startuml
  * class OboIntegrator{
- *  -kieSession :  KieSession
  * }
  * @enduml
  */
@@ -83,9 +83,9 @@ public class OboIntegrator implements Integrator {
     private static final int    DEFAULT_NUMBER_PAGE = 10;
     private static final String SOURCE              = "Unipathway OBO 09/06/15";
     private static final Logger LOG                 = ( Logger ) LoggerFactory.getLogger( OboIntegrator.class );
-    private final Reasoner              grools;
-    private final String                source;
-    private final Map<String, Set<UER>> metacycToUER;
+    private final Reasoner               grools;
+    private final String                 source;
+    private final Map<String, Set<UER >> metacycToUER;
     
     @NonNull
     private final InputStream obo;
@@ -93,7 +93,7 @@ public class OboIntegrator implements Integrator {
     
     @NonNull
     @Getter
-    private final OboParser oboParser;
+    private final OboReader oboReader;
     
     @NonNull
     private static InputStream getFile( @NonNull final String fileName ) {
@@ -112,7 +112,7 @@ public class OboIntegrator implements Integrator {
     
     
     @NonNull
-    public static Map<String, Set<UER>> metacycToUER( @NonNull final InputStream metacycMappingFileName, @NonNull final OboParser oboParser ) {
+    public static Map<String, Set<UER>> metacycToUER( @NonNull final InputStream metacycMappingFileName, @NonNull final OboReader oboReader ) {
         
         final Map<String, Set<UER>> mapping       = new HashMap<>( );
         BufferedReader              br            = null;
@@ -132,7 +132,7 @@ public class OboIntegrator implements Integrator {
                         values = new HashSet<>( );
                         mapping.put( currentValues[ 3 ], values );
                     }
-                    values.add( ( UER ) oboParser.getTerm( currentValues[ 2 ] ) );
+                    values.add( ( UER ) oboReader.getTerm( currentValues[ 2 ] ) );
                 }
                 line = br.readLine( );
             }
@@ -170,24 +170,24 @@ public class OboIntegrator implements Integrator {
     
     public OboIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
         obo = getFile( "unipathway.obo" );
-        oboParser = new OboParser( obo );
+        oboReader = new OboReader( obo );
         grools = reasoner;
         source = SOURCE;
-        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboParser );
+        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
     }
     
     public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description ) throws Exception {
         obo = new FileInputStream( oboFile );
-        oboParser = new OboParser( obo );
+        oboReader = new OboReader( obo );
         grools = reasoner;
         source = source_description;
-        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboParser );
+        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
     }
     
     
     @Override
     public void integration( ) {
-        final Iterator<Map.Entry<String, Term>> it = oboParser.iterator( );
+        final Iterator<Map.Entry<String, Term>> it = oboReader.iterator( );
         while( it.hasNext( ) ) {
             final Map.Entry<String, Term> entry  = it.next( );
             final Term                    term   = entry.getValue( );
@@ -198,14 +198,14 @@ public class OboIntegrator implements Integrator {
                 
                 if( tr instanceof UPA ) {
                     final UPA upa = ( UPA ) tr;
-                    for( final fr.cea.ig.model.obo.Relation isA : upa.getIsA( ) ) {
-                        final Term           termType = oboParser.getTerm( isA.getIdLeft( ) );
+                    for( final fr.cea.ig.bio.model.obo.Relation isA : upa.getIsA( ) ) {
+                        final Term           termType = oboReader.getTerm( isA.getIdLeft( ) );
                         final PriorKnowledge pkType   = getPriorKnowledge( termType );
-                        final Relation       relType  = new RelationImpl( parent, pkType, RelationType.SUBTYPE );
+                        final Relation relType  = new RelationImpl( parent, pkType, RelationType.SUBTYPE );
                         grools.insert( relType );
                     }
                     if( upa.getSuperPathway( ) != null ) {
-                        final Term           superPath   = oboParser.getTerm( upa.getSuperPathway( ).getIdLeft( ) );
+                        final Term           superPath   = oboReader.getTerm( upa.getSuperPathway( ).getIdLeft( ) );
                         final PriorKnowledge pkSuperPath = getPriorKnowledge( superPath );
 //                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.PART);
                         final Relation relSuperPath = new RelationImpl( parent, pkSuperPath, RelationType.SUBTYPE ); // should be part but unipathway use super pathway definition inconsistently
@@ -213,7 +213,7 @@ public class OboIntegrator implements Integrator {
                     }
                 }
                 
-                final List<Variant> variants = new ArrayList<>( );
+                final List<Variant > variants = new ArrayList<>( );
                 Variant.getVariant( tr.getChildren( ), variants );
                 if( variants.size( ) > 1 ) {
                     int i = 1;
@@ -258,7 +258,7 @@ public class OboIntegrator implements Integrator {
             }
         }
         else {
-            results = oboParser.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
+            results = oboReader.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
                                .filter( entry -> entry.getValue( ).getXref( source ).stream( )
                                                       .anyMatch( ref -> {
                                                           boolean hasMatch = false;

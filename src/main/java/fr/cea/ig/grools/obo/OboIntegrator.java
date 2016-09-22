@@ -37,8 +37,11 @@ package fr.cea.ig.grools.obo;
 import ch.qos.logback.classic.Logger;
 import fr.cea.ig.bio.model.obo.Term;
 import fr.cea.ig.bio.model.obo.TermRelations;
+import fr.cea.ig.bio.model.obo.UCR;
 import fr.cea.ig.bio.model.obo.UER;
+import fr.cea.ig.bio.model.obo.ULS;
 import fr.cea.ig.bio.model.obo.UPA;
+import fr.cea.ig.bio.model.obo.UPC;
 import fr.cea.ig.bio.model.obo.Variant;
 import fr.cea.ig.bio.scribe.OboReader;
 import fr.cea.ig.grools.fact.PriorKnowledge;
@@ -60,6 +63,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -83,9 +87,21 @@ public class OboIntegrator implements Integrator {
     private static final int    DEFAULT_NUMBER_PAGE = 10;
     private static final String SOURCE              = "Unipathway OBO 09/06/15";
     private static final Logger LOG                 = ( Logger ) LoggerFactory.getLogger( OboIntegrator.class );
-    private final Reasoner               grools;
-    private final String                 source;
-    private final Map<String, Set<UER >> metacycToUER;
+    private static final Map< Class<? extends Term>, Integer > hierarchy;
+    static {
+        Map< Class<? extends Term>, Integer > tmp = new HashMap<>(  );
+        tmp.put( UPA.class, 1 );
+        tmp.put( ULS.class, 2 );
+        tmp.put( UER.class, 3 );
+        tmp.put( UCR.class, 4 );
+        tmp.put( UPC.class, 5 );
+        hierarchy =  Collections.unmodifiableMap( tmp );
+    }
+
+    private final Reasoner                  grools;
+    private final String                    source;
+    private final Map<String, Set<UER >>    metacycToUER;
+    private final Class< ? extends Term >   filter;
     
     @NonNull
     private final InputStream obo;
@@ -169,19 +185,41 @@ public class OboIntegrator implements Integrator {
     }
     
     public OboIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
-        obo = getFile( "unipathway.obo" );
-        oboReader = new OboReader( obo );
-        grools = reasoner;
-        source = SOURCE;
-        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        obo             = getFile( "unipathway.obo" );
+        oboReader       = new OboReader( obo );
+        grools          = reasoner;
+        source          = SOURCE;
+        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        filter          = UER.class;
     }
+
+    public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
+        obo             = getFile( "unipathway.obo" );
+        oboReader       = new OboReader( obo );
+        grools          = reasoner;
+        source          = SOURCE;
+        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        filter          = untilTerm;
+    }
+
     
     public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description ) throws Exception {
-        obo = new FileInputStream( oboFile );
-        oboReader = new OboReader( obo );
-        grools = reasoner;
-        source = source_description;
-        metacycToUER = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        obo             = new FileInputStream( oboFile );
+        oboReader       = new OboReader( obo );
+        grools          = reasoner;
+        source          = source_description;
+        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        filter          = UER.class;
+    }
+
+
+    public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description, @NonNull final Class<? extends Term> untilTerm  ) throws Exception {
+        obo             = new FileInputStream( oboFile );
+        oboReader       = new OboReader( obo );
+        grools          = reasoner;
+        source          = source_description;
+        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        filter          = untilTerm;
     }
     
     
@@ -192,8 +230,8 @@ public class OboIntegrator implements Integrator {
             final Map.Entry<String, Term> entry  = it.next( );
             final Term                    term   = entry.getValue( );
             final PriorKnowledge          parent = getPriorKnowledge( term );
-            
-            if( term instanceof TermRelations ) {
+            final int hierarchy_depth = hierarchy.get( term.getClass() );
+            if( hierarchy_depth < hierarchy.get( filter ) ) {
                 final TermRelations tr = ( TermRelations ) term;
                 
                 if( tr instanceof UPA ) {

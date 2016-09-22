@@ -172,7 +172,7 @@ public class OboIntegrator implements Integrator {
     private PriorKnowledge getPriorKnowledge( @NonNull final Term term ) {
         PriorKnowledge pk = grools.getPriorKnowledge( term.getId( ) );
         if( pk == null ) {
-            final String desc = ( term.getDefinition( ) == null || term.getDefinition( ).isEmpty( ) ) ? term.getName( ) : term.getName( ) + ":" + term.getDefinition( );
+            final String desc = ( term.getDefinition( ) == null || term.getDefinition( ).isEmpty( ) ) ? term.getName( ) : term.getName( ) + "~" + term.getDefinition( );
             pk = PriorKnowledgeImpl.builder( )
                                    .name( term.getId( ) )
                                    .label( term.getName( ) )

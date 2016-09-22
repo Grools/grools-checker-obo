@@ -250,7 +250,7 @@ public class OboIntegrator implements Integrator {
     @Override
     public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed( @NonNull final String source, @NonNull final String id ) {
         Set<PriorKnowledge> results = null;
-        if( id.startsWith( "UPA" ) ) {
+        if( id.startsWith( "UPA" ) || id.startsWith( "ULS" ) || id.startsWith( "UER" ) || id.startsWith( "UCR" ) ) {
             final PriorKnowledge pk = grools.getPriorKnowledge( id );
             if( pk != null ) {
                 results = new HashSet<>( );

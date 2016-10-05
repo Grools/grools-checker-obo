@@ -185,12 +185,7 @@ public class OboIntegrator implements Integrator {
     }
     
     public OboIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
-        obo             = getFile( "unipathway.obo" );
-        oboReader       = new OboReader( obo );
-        grools          = reasoner;
-        source          = SOURCE;
-        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
-        filter          = UER.class;
+        this( reasoner, UER.class );
     }
 
     public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
@@ -204,12 +199,7 @@ public class OboIntegrator implements Integrator {
 
     
     public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description ) throws Exception {
-        obo             = new FileInputStream( oboFile );
-        oboReader       = new OboReader( obo );
-        grools          = reasoner;
-        source          = source_description;
-        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
-        filter          = UER.class;
+        this( reasoner, oboFile, source_description, UER.class);
     }
 
 

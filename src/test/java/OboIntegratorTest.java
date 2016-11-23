@@ -33,8 +33,8 @@
  */
 
 
-import fr.cea.ig.bio.model.obo.UER;
-import fr.cea.ig.bio.model.obo.UPA;
+import fr.cea.ig.bio.model.obo.unipathway.UER;
+import fr.cea.ig.bio.model.obo.unipathway.UPA;
 import fr.cea.ig.grools.reasoner.Reasoner;
 import fr.cea.ig.grools.reasoner.ReasonerImpl;
 import fr.cea.ig.grools.fact.PriorKnowledge;

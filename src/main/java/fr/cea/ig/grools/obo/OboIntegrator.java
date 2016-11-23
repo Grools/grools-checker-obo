@@ -36,14 +36,14 @@ package fr.cea.ig.grools.obo;
 
 import ch.qos.logback.classic.Logger;
 import fr.cea.ig.bio.model.obo.Term;
-import fr.cea.ig.bio.model.obo.TermRelations;
-import fr.cea.ig.bio.model.obo.UCR;
-import fr.cea.ig.bio.model.obo.UER;
-import fr.cea.ig.bio.model.obo.ULS;
-import fr.cea.ig.bio.model.obo.UPA;
-import fr.cea.ig.bio.model.obo.UPC;
-import fr.cea.ig.bio.model.obo.Variant;
-import fr.cea.ig.bio.scribe.OboReader;
+import fr.cea.ig.bio.model.obo.unipathway.TermRelations;
+import fr.cea.ig.bio.model.obo.unipathway.UCR;
+import fr.cea.ig.bio.model.obo.unipathway.UER;
+import fr.cea.ig.bio.model.obo.unipathway.ULS;
+import fr.cea.ig.bio.model.obo.unipathway.UPA;
+import fr.cea.ig.bio.model.obo.unipathway.UPC;
+import fr.cea.ig.bio.model.obo.unipathway.Variant;
+import fr.cea.ig.bio.scribe.UniPathwayOboReader;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import fr.cea.ig.grools.fact.PriorKnowledgeImpl;
 import fr.cea.ig.grools.fact.Relation;
@@ -109,7 +109,7 @@ public class OboIntegrator implements Integrator {
     
     @NonNull
     @Getter
-    private final OboReader oboReader;
+    private final UniPathwayOboReader oboReader;
     
     @NonNull
     private static InputStream getFile( @NonNull final String fileName ) {
@@ -128,7 +128,7 @@ public class OboIntegrator implements Integrator {
     
     
     @NonNull
-    public static Map<String, Set<UER>> metacycToUER( @NonNull final InputStream metacycMappingFileName, @NonNull final OboReader oboReader ) {
+    public static Map<String, Set<UER>> metacycToUER( @NonNull final InputStream metacycMappingFileName, @NonNull final UniPathwayOboReader oboReader ) {
         
         final Map<String, Set<UER>> mapping       = new HashMap<>( );
         BufferedReader              br            = null;
@@ -186,7 +186,7 @@ public class OboIntegrator implements Integrator {
 
     public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
         obo             = getFile( "unipathway.obo" );
-        oboReader       = new OboReader( obo );
+        oboReader       = new UniPathwayOboReader( obo );
         grools          = reasoner;
         source          = SOURCE;
         metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
@@ -205,7 +205,7 @@ public class OboIntegrator implements Integrator {
 
     public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description, @NonNull final Class<? extends Term> untilTerm  ) throws Exception {
         obo             = new FileInputStream( oboFile );
-        oboReader       = new OboReader( obo );
+        oboReader       = new UniPathwayOboReader( obo );
         grools          = reasoner;
         source          = source_description;
         metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
@@ -226,7 +226,7 @@ public class OboIntegrator implements Integrator {
                 
                 if( tr instanceof UPA ) {
                     final UPA upa = ( UPA ) tr;
-                    for( final fr.cea.ig.bio.model.obo.Relation isA : upa.getIsA( ) ) {
+                    for( final fr.cea.ig.bio.model.obo.unipathway.Relation isA : upa.getIsA( ) ) {
                         final Term           termType = oboReader.getTerm( isA.getIdLeft( ) );
                         final PriorKnowledge pkType   = getPriorKnowledge( termType );
                         final Relation relType  = new RelationImpl( parent, pkType, RelationType.SUBTYPE );

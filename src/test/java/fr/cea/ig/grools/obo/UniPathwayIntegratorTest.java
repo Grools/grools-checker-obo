@@ -1,4 +1,4 @@
-/*
+package fr.cea.ig.grools.obo;/*
  * Copyright LABGeM 26/03/15
  *
  * author: Jonathan MERCIER
@@ -35,12 +35,12 @@
 
 import fr.cea.ig.bio.model.obo.unipathway.UER;
 import fr.cea.ig.bio.model.obo.unipathway.UPA;
+import fr.cea.ig.grools.obo.UniPathwayIntegrator;
 import fr.cea.ig.grools.reasoner.Reasoner;
 import fr.cea.ig.grools.reasoner.ReasonerImpl;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import fr.cea.ig.grools.fact.Relation;
 import fr.cea.ig.grools.fact.RelationType;
-import fr.cea.ig.grools.obo.OboIntegrator;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -50,18 +50,18 @@ import java.util.Set;
 import static org.junit.Assert.*;
 
 
-public class OboIntegratorTest {
+public class UniPathwayIntegratorTest {
     
-    private Reasoner      grools;
-    private OboIntegrator oboIntegrator;
+    private Reasoner             grools;
+    private UniPathwayIntegrator uniPathwayIntegrator;
     
     @Before
     public void setUp( ) throws Exception {
         grools = new ReasonerImpl( );
         assertNotNull( grools );
-        oboIntegrator = new OboIntegrator( grools );
-        assertNotNull( oboIntegrator );
-        oboIntegrator.integration( );
+        uniPathwayIntegrator = new UniPathwayIntegrator( grools );
+        assertNotNull( uniPathwayIntegrator );
+        uniPathwayIntegrator.integration( );
     }
     
     
@@ -123,12 +123,12 @@ public class OboIntegratorTest {
     
     @Test
     public void testXref( ) {
-        final UPA                 upa33    = ( UPA ) oboIntegrator.getOboReader( ).getTerm( "UPA00033" );
-        final UER                 uer28    = ( UER ) oboIntegrator.getOboReader( ).getTerm( "UER00028" );
+        final UPA                 upa33    = ( UPA ) uniPathwayIntegrator.getReader( ).getTerm( "UPA00033" );
+        final UER                 uer28    = ( UER ) uniPathwayIntegrator.getReader( ).getTerm( "UER00028" );
         final PriorKnowledge      pk33     = grools.getPriorKnowledge( "UPA00033" );
         final PriorKnowledge      pk28     = grools.getPriorKnowledge( "UER00028" );
-        final Set<PriorKnowledge> results1 = oboIntegrator.getPriorKnowledgeRelatedToObservationNamed( "KEGG", "map00300" );
-        final Set<PriorKnowledge> results2 = oboIntegrator.getPriorKnowledgeRelatedToObservationNamed( "EC", "2.3.3.14" );
+        final Set<PriorKnowledge> results1 = uniPathwayIntegrator.getPriorKnowledgeRelatedToObservationNamed( "KEGG", "map00300" );
+        final Set<PriorKnowledge> results2 = uniPathwayIntegrator.getPriorKnowledgeRelatedToObservationNamed( "EC", "2.3.3.14" );
         assertNotNull( upa33 );
         assertNotNull( uer28 );
         assertNotNull( results1 );

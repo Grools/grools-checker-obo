@@ -78,15 +78,15 @@ import java.util.stream.Collectors;
  */
 /*
  * @startuml
- * class OboIntegrator{
+ * class UniPathwayIntegrator{
  * }
  * @enduml
  */
-public class OboIntegrator implements Integrator {
+public class UniPathwayIntegrator implements Integrator {
     private static final int    PAGE_SIZE           = 4_096;
     private static final int    DEFAULT_NUMBER_PAGE = 10;
     private static final String SOURCE              = "Unipathway OBO 09/06/15";
-    private static final Logger LOG                 = ( Logger ) LoggerFactory.getLogger( OboIntegrator.class );
+    private static final Logger LOG                 = ( Logger ) LoggerFactory.getLogger( UniPathwayIntegrator.class );
     private static final Map< Class<? extends Term>, Integer > hierarchy;
     static {
         Map< Class<? extends Term>, Integer > tmp = new HashMap<>(  );
@@ -109,11 +109,11 @@ public class OboIntegrator implements Integrator {
     
     @NonNull
     @Getter
-    private final UniPathwayOboReader oboReader;
+    private final UniPathwayOboReader reader;
     
     @NonNull
     private static InputStream getFile( @NonNull final String fileName ) {
-        ClassLoader classLoader = OboIntegrator.class.getClassLoader( );
+        ClassLoader classLoader = UniPathwayIntegrator.class.getClassLoader( );
         return classLoader.getResourceAsStream( fileName );
     }
     
@@ -184,61 +184,68 @@ public class OboIntegrator implements Integrator {
         return pk;
     }
 
-    public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
+    public UniPathwayIntegrator( @NonNull final Reasoner reasoner, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
         obo             = getFile( "unipathway.obo" );
-        oboReader       = new UniPathwayOboReader( obo );
+        reader = new UniPathwayOboReader( obo );
         grools          = reasoner;
         source          = SOURCE;
-        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), reader );
         filter          = untilTerm;
     }
 
-    public OboIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
+    public UniPathwayIntegrator( @NonNull final Reasoner reasoner ) throws Exception {
         this( reasoner, UER.class );
     }
 
     
-    public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description ) throws Exception {
+    public UniPathwayIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description ) throws Exception {
         this( reasoner, oboFile, source_description, UER.class);
     }
 
 
-    public OboIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description, @NonNull final Class<? extends Term> untilTerm  ) throws Exception {
+    public UniPathwayIntegrator( @NonNull final Reasoner reasoner, @NonNull final File oboFile, @NonNull final String source_description, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
         obo             = new FileInputStream( oboFile );
-        oboReader       = new UniPathwayOboReader( obo );
+        reader = new UniPathwayOboReader( obo );
         grools          = reasoner;
         source          = source_description;
-        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), oboReader );
+        metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), reader );
         filter          = untilTerm;
     }
     
     
     @Override
     public void integration( ) {
-        final Iterator<Map.Entry<String, Term>> it = oboReader.iterator( );
+        final Iterator<Map.Entry<String, Term>> it = reader.iterator( );
         while( it.hasNext( ) ) {
-            final Map.Entry<String, Term> entry  = it.next( );
-            final Term                    term   = entry.getValue( );
-            final PriorKnowledge          parent = getPriorKnowledge( term );
-            final int hierarchy_depth = hierarchy.get( term.getClass() );
+            final Map.Entry<String, Term> entry             = it.next( );
+            final Term                    term              = entry.getValue( );
+            final PriorKnowledge          parent            = getPriorKnowledge( term );
+            final int                     hierarchy_depth   = hierarchy.get( term.getClass() );
             if( hierarchy_depth < hierarchy.get( filter ) ) {
-                final TermRelations tr = ( TermRelations ) term;
+                final TermRelations tr = ( TermRelations ) term; // dangerous cast if hierarchy filter is set to UPC
                 
                 if( tr instanceof UPA ) {
                     final UPA upa = ( UPA ) tr;
                     for( final fr.cea.ig.bio.model.obo.unipathway.Relation isA : upa.getIsA( ) ) {
-                        final Term           termType = oboReader.getTerm( isA.getIdLeft( ) );
+                        final Term           termType = reader.getTerm( isA.getIdLeft( ) );
                         final PriorKnowledge pkType   = getPriorKnowledge( termType );
                         final Relation relType  = new RelationImpl( parent, pkType, RelationType.SUBTYPE );
                         grools.insert( relType );
                     }
                     if( upa.getSuperPathway( ) != null ) {
-                        final Term           superPath   = oboReader.getTerm( upa.getSuperPathway( ).getIdLeft( ) );
+                        final Term           superPath   = reader.getTerm( upa.getSuperPathway( ).getIdLeft( ) );
                         final PriorKnowledge pkSuperPath = getPriorKnowledge( superPath );
 //                        final Relation          relSuperPath= new RelationImpl(parent, pkSuperPath, RelationType.PART);
                         final Relation relSuperPath = new RelationImpl( parent, pkSuperPath, RelationType.SUBTYPE ); // should be part but unipathway use super pathway definition inconsistently
                         grools.insert( relSuperPath );
                     }
+                }
+                
+                for( final fr.cea.ig.bio.model.obo.unipathway.Relation relation : tr.getRelation( "has_alternate_enzymatic_reaction" ) ){
+                    final Term              alternate   = reader.getTerm( relation.getIdLeft( ) );
+                    final PriorKnowledge    pkAlternate = getPriorKnowledge( alternate );
+                    final Relation          relAlternate = new RelationImpl( parent, pkAlternate, RelationType.SUBTYPE );
+                    grools.insert( relAlternate );
                 }
                 
                 final List<Variant > variants = new ArrayList<>( );
@@ -286,8 +293,8 @@ public class OboIntegrator implements Integrator {
             }
         }
         else {
-            results = oboReader.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
-                               .filter( entry -> entry.getValue( ).getXref( source ).stream( )
+            results = reader.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
+                            .filter( entry -> entry.getValue( ).getXref( source ).stream( )
                                                       .anyMatch( ref -> {
                                                           boolean hasMatch = false;
                                                           if( source.equals( "EC" ) )
@@ -296,8 +303,8 @@ public class OboIntegrator implements Integrator {
                                                               hasMatch = ref.getId( ).equals( id );
                                                           return hasMatch;
                                                       } ) )
-                               .map( entry -> getPriorKnowledge( entry.getValue( ) ) )
-                               .collect( Collectors.toSet( ) );
+                            .map( entry -> getPriorKnowledge( entry.getValue( ) ) )
+                            .collect( Collectors.toSet( ) );
             if( source.equals( "MetaCyc" ) && results.isEmpty( ) && metacycToUER.containsKey( id ) ) {
                 for( final UER uer : metacycToUER.get( id ) ) {
                     PriorKnowledge pk = getPriorKnowledge( uer );

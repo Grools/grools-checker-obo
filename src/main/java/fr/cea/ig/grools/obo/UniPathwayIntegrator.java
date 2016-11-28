@@ -221,8 +221,8 @@ public class UniPathwayIntegrator implements Integrator {
             final Term                    term              = entry.getValue( );
             final PriorKnowledge          parent            = getPriorKnowledge( term );
             final int                     hierarchy_depth   = hierarchy.get( term.getClass() );
-            if( hierarchy_depth < hierarchy.get( filter ) ) {
-                final TermRelations tr = ( TermRelations ) term; // dangerous cast if hierarchy filter is set to UPC
+            if( hierarchy_depth <= hierarchy.get( filter ) && term instanceof TermRelations) {
+                final TermRelations tr = ( TermRelations ) term;
                 
                 if( tr instanceof UPA ) {
                     final UPA upa = ( UPA ) tr;
@@ -244,7 +244,7 @@ public class UniPathwayIntegrator implements Integrator {
                 for( final fr.cea.ig.bio.model.obo.unipathway.Relation relation : tr.getRelation( "has_alternate_enzymatic_reaction" ) ){
                     final Term              alternate   = reader.getTerm( relation.getIdLeft( ) );
                     final PriorKnowledge    pkAlternate = getPriorKnowledge( alternate );
-                    final Relation          relAlternate = new RelationImpl( parent, pkAlternate, RelationType.SUBTYPE );
+                    final Relation          relAlternate = new RelationImpl( pkAlternate, parent, RelationType.SUBTYPE );
                     grools.insert( relAlternate );
                 }
                 
@@ -272,9 +272,11 @@ public class UniPathwayIntegrator implements Integrator {
                 else {
                     for( final Variant variant : variants ) {
                         for( final Term child : variant ) {
-                            final PriorKnowledge pkChild  = getPriorKnowledge( child );
-                            final Relation       relChild = new RelationImpl( pkChild, parent, RelationType.PART );
-                            grools.insert( relChild );
+                            if ( hierarchy.get( child.getClass() ) <= hierarchy.get( filter ) ){ // condition test done at each iteration maybe one before for loop is better
+                                final PriorKnowledge pkChild = getPriorKnowledge( child );
+                                final Relation relChild = new RelationImpl( pkChild, parent, RelationType.PART );
+                                grools.insert( relChild );
+                            }
                         }
                     }
                 }

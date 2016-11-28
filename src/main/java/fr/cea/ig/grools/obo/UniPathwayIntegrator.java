@@ -241,12 +241,12 @@ public class UniPathwayIntegrator implements Integrator {
                     }
                 }
                 
-                for( final fr.cea.ig.bio.model.obo.unipathway.Relation relation : tr.getRelation( "has_alternate_enzymatic_reaction" ) ){
-                    final Term              alternate   = reader.getTerm( relation.getIdLeft( ) );
-                    final PriorKnowledge    pkAlternate = getPriorKnowledge( alternate );
-                    final Relation          relAlternate = new RelationImpl( pkAlternate, parent, RelationType.SUBTYPE );
-                    grools.insert( relAlternate );
-                }
+//                for( final fr.cea.ig.bio.model.obo.unipathway.Relation relation : tr.getRelation( "has_alternate_enzymatic_reaction" ) ){
+//                    final Term              alternate   = reader.getTerm( relation.getIdLeft( ) );
+//                    final PriorKnowledge    pkAlternate = getPriorKnowledge( alternate );
+//                    final Relation          relAlternate = new RelationImpl( pkAlternate, parent, RelationType.SUBTYPE );
+//                    grools.insert( relAlternate );
+//                }
                 
                 final List<Variant > variants = new ArrayList<>( );
                 Variant.getVariant( tr.getChildren( ), variants );

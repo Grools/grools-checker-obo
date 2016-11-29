@@ -42,7 +42,7 @@ import fr.cea.ig.bio.model.obo.unipathway.UER;
 import fr.cea.ig.bio.model.obo.unipathway.ULS;
 import fr.cea.ig.bio.model.obo.unipathway.UPA;
 import fr.cea.ig.bio.model.obo.unipathway.UPC;
-import fr.cea.ig.bio.model.obo.unipathway.Variant;
+import fr.cea.ig.bio.model.obo.unipathway.VariantPath;
 import fr.cea.ig.bio.scribe.UniPathwayOboReader;
 import fr.cea.ig.grools.fact.PriorKnowledge;
 import fr.cea.ig.grools.fact.PriorKnowledgeImpl;
@@ -67,7 +67,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -223,7 +222,7 @@ public class UniPathwayIntegrator implements Integrator {
             final int                     hierarchy_depth   = hierarchy.get( term.getClass() );
             if( hierarchy_depth <= hierarchy.get( filter ) && term instanceof TermRelations) {
                 final TermRelations tr = ( TermRelations ) term;
-                
+
                 if( tr instanceof UPA ) {
                     final UPA upa = ( UPA ) tr;
                     for( final fr.cea.ig.bio.model.obo.unipathway.Relation isA : upa.getIsA( ) ) {
@@ -240,20 +239,19 @@ public class UniPathwayIntegrator implements Integrator {
                         grools.insert( relSuperPath );
                     }
                 }
-                
+
 //                for( final fr.cea.ig.bio.model.obo.unipathway.Relation relation : tr.getRelation( "has_alternate_enzymatic_reaction" ) ){
 //                    final Term              alternate   = reader.getTerm( relation.getIdLeft( ) );
 //                    final PriorKnowledge    pkAlternate = getPriorKnowledge( alternate );
 //                    final Relation          relAlternate = new RelationImpl( pkAlternate, parent, RelationType.SUBTYPE );
 //                    grools.insert( relAlternate );
 //                }
-                
-                final List<Variant > variants = new ArrayList<>( );
-                Variant.getVariant( tr.getChildren( ), variants );
+
+                final Set<VariantPath > variants = VariantPath.getVariantFrom( tr );
                 if( variants.size( ) > 1 ) {
                     int i = 1;
-                    for( final Variant variant : variants ) {
-                        final String name = "variant-" + String.valueOf( i ) + '-' + term.getId( );
+                    for( final VariantPath VariantPath : variants ) {
+                        final String name = "VariantPath-" + String.valueOf( i ) + '-' + term.getId( );
                         final PriorKnowledge v = PriorKnowledgeImpl.builder( )
                                                                    .name( name )
                                                                    .label( term.getName( ) )
@@ -261,7 +259,7 @@ public class UniPathwayIntegrator implements Integrator {
                                                                    .build( );
                         final Relation rel = new RelationImpl( v, parent, RelationType.SUBTYPE );
                         grools.insert( v, rel );
-                        for( final Term child : variant ) {
+                        for( final Term child : VariantPath ) {
                             final PriorKnowledge pkChild  = getPriorKnowledge( child );
                             final Relation       relChild = new RelationImpl( pkChild, v, RelationType.PART );
                             grools.insert( relChild );
@@ -270,15 +268,15 @@ public class UniPathwayIntegrator implements Integrator {
                     }
                 }
                 else {
-                    for( final Variant variant : variants ) {
-                        for( final Term child : variant ) {
+//                    for( final VariantPath VariantPath : variants ) {
+                        for( final Term child : tr.getChildren() ) {
                             if ( hierarchy.get( child.getClass() ) <= hierarchy.get( filter ) ){ // condition test done at each iteration maybe one before for loop is better
                                 final PriorKnowledge pkChild = getPriorKnowledge( child );
                                 final Relation relChild = new RelationImpl( pkChild, parent, RelationType.PART );
                                 grools.insert( relChild );
                             }
                         }
-                    }
+//                    }
                 }
             }
         }

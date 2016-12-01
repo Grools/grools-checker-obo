@@ -292,7 +292,7 @@ public class UniPathwayIntegrator implements Integrator {
                 results.add( pk );
             }
         }
-        else {
+        if( results == null ) {
             results = reader.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
                             .filter( entry -> entry.getValue( ).getXref( source ).stream( )
                                                       .anyMatch( ref -> {

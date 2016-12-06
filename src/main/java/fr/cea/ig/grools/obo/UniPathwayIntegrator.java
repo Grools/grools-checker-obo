@@ -185,7 +185,7 @@ public class UniPathwayIntegrator implements Integrator {
 
     public UniPathwayIntegrator( @NonNull final Reasoner reasoner, @NonNull final Class<? extends Term> untilTerm ) throws Exception {
         obo             = getFile( "unipathway.obo" );
-        reader = new UniPathwayOboReader( obo );
+        reader          = new UniPathwayOboReader( obo );
         grools          = reasoner;
         source          = SOURCE;
         metacycToUER    = metacycToUER( getFile( "unipathway2metacyc.tsv" ), reader );

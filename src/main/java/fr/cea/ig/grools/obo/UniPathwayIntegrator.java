@@ -84,7 +84,7 @@ import java.util.stream.Collectors;
 public class UniPathwayIntegrator implements Integrator {
     private static final int    PAGE_SIZE           = 4_096;
     private static final int    DEFAULT_NUMBER_PAGE = 10;
-    private static final String SOURCE              = "Unipathway OBO 09/06/15";
+    private static final String SOURCE              = "Unipathway OBO modified 02/12/16";
     private static final Logger LOG                 = ( Logger ) LoggerFactory.getLogger( UniPathwayIntegrator.class );
     private static final Map< Class<? extends Term>, Integer > hierarchy;
     static {
@@ -285,25 +285,43 @@ public class UniPathwayIntegrator implements Integrator {
     @Override
     public Set<PriorKnowledge> getPriorKnowledgeRelatedToObservationNamed( @NonNull final String source, @NonNull final String id ) {
         Set<PriorKnowledge> results = null;
-        if( id.startsWith( "UPA" ) || id.startsWith( "ULS" ) || id.startsWith( "UER" ) || id.startsWith( "UCR" ) ) {
+        boolean idStartWithUP = ( id.startsWith( "UPA" ) || id.startsWith( "ULS" ) || id.startsWith( "UER" ) || id.startsWith( "MUER" ) || id.startsWith( "UCR" ) );
+        if( idStartWithUP ) {
             final PriorKnowledge pk = grools.getPriorKnowledge( id );
             if( pk != null ) {
                 results = new HashSet<>( );
                 results.add( pk );
             }
         }
-        if( results == null ) {
-            results = reader.stream( ).filter( entry -> entry.getValue( ).getXref( source ) != null )
-                            .filter( entry -> entry.getValue( ).getXref( source ).stream( )
-                                                      .anyMatch( ref -> {
-                                                          boolean hasMatch = false;
-                                                          if( source.equals( "EC" ) )
-                                                              hasMatch = ( ref.getId( ).equals( id ) || ref.getId( ).startsWith( id + '.' ) );
-                                                          else
-                                                              hasMatch = ref.getId( ).equals( id );
-                                                          return hasMatch;
-                                                      } ) )
-                            .map( entry -> getPriorKnowledge( entry.getValue( ) ) )
+        if( results == null  ) {
+            results = reader.stream().map(  entry -> entry.getValue( ) )
+                            .filter( term -> term.getXref()
+                                              .entrySet()
+                                              .stream()
+                                              .anyMatch( m -> {
+                                                  boolean hasMatch = false;
+                                                  final String key = m.getKey(); // source
+                                                  if( key.startsWith( "UPa" ) )
+                                                      hasMatch = m.getValue()
+                                                                  .stream()
+                                                                  .filter( ref -> ref.getId().equals( id ) ||  ref.getId().equals( "UPa:"+id ) )
+                                                                  .findFirst()
+                                                                  .isPresent();
+                                                  else if( source.equals( "EC" ) )
+                                                      hasMatch = m.getValue()
+                                                                  .stream()
+                                                                  .filter( ref -> ref.getId( ).equals( id ) || ref.getId( ).startsWith( id + '.' ) )
+                                                                  .findFirst()
+                                                                  .isPresent();
+                                                  else
+                                                      hasMatch = m.getValue()
+                                                                  .stream()
+                                                                  .filter( ref -> ref.getId( ).equals( id ) )
+                                                                  .findFirst()
+                                                                  .isPresent();
+                                                  return hasMatch;
+                                              } ) )
+                            .map( term -> getPriorKnowledge( term ) )
                             .collect( Collectors.toSet( ) );
             if( source.equals( "MetaCyc" ) && results.isEmpty( ) && metacycToUER.containsKey( id ) ) {
                 for( final UER uer : metacycToUER.get( id ) ) {

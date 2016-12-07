@@ -127,14 +127,19 @@ public class UniPathwayIntegratorTest {
         final UER                 uer28    = ( UER ) uniPathwayIntegrator.getReader( ).getTerm( "UER00028" );
         final PriorKnowledge      pk33     = grools.getPriorKnowledge( "UPA00033" );
         final PriorKnowledge      pk28     = grools.getPriorKnowledge( "UER00028" );
+        final PriorKnowledge      pk19     = grools.getPriorKnowledge( "MUER19" );
         final Set<PriorKnowledge> results1 = uniPathwayIntegrator.getPriorKnowledgeRelatedToObservationNamed( "KEGG", "map00300" );
         final Set<PriorKnowledge> results2 = uniPathwayIntegrator.getPriorKnowledgeRelatedToObservationNamed( "EC", "2.3.3.14" );
+        final Set<PriorKnowledge> results3 = uniPathwayIntegrator.getPriorKnowledgeRelatedToObservationNamed( "unipathway", "UER00010" );
         assertNotNull( upa33 );
         assertNotNull( uer28 );
+        assertNotNull( pk19 );
         assertNotNull( results1 );
         assertNotNull( results2 );
+        assertNotNull( results3 );
         assertTrue( results1.contains( pk33 ) );
         assertTrue( results2.contains( pk28 ) );
+        assertTrue( results3.contains( pk19 ) );
     }
     
     

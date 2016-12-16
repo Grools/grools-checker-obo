@@ -302,26 +302,20 @@ public class UniPathwayIntegrator implements Integrator {
                                                   boolean hasMatch = false;
                                                   final String key = m.getKey(); // source
                                                   if( key.startsWith( "UPa" ) )
-                                                      hasMatch = m.getValue()
+                                                      hasMatch = m.getValue( )
                                                                   .stream()
-                                                                  .filter( ref -> ref.getId().equals( id ) ||  ref.getId().equals( "UPa:"+id ) )
-                                                                  .findFirst()
-                                                                  .isPresent();
+                                                                  .anyMatch( ref -> ref.getId( ).equals( id ) ||  ref.getId( ).equals( "UPa:"+id ) );
                                                   else if( source.equals( "EC" ) )
-                                                      hasMatch = m.getValue()
+                                                      hasMatch = m.getValue( )
                                                                   .stream()
-                                                                  .filter( ref -> ref.getId( ).equals( id ) || ref.getId( ).startsWith( id + '.' ) )
-                                                                  .findFirst()
-                                                                  .isPresent();
+                                                                  .anyMatch( ref -> ref.getId( ).equals( id ) || ref.getId( ).startsWith( id + '.' ) );
                                                   else
-                                                      hasMatch = m.getValue()
+                                                      hasMatch = m.getValue( )
                                                                   .stream()
-                                                                  .filter( ref -> ref.getId( ).equals( id ) )
-                                                                  .findFirst()
-                                                                  .isPresent();
+                                                                  .anyMatch( ref -> ref.getId( ).equals( id ) );
                                                   return hasMatch;
                                               } ) )
-                            .map( term -> getPriorKnowledge( term ) )
+                            .map( this::getPriorKnowledge )
                             .collect( Collectors.toSet( ) );
             if( source.equals( "MetaCyc" ) && results.isEmpty( ) && metacycToUER.containsKey( id ) ) {
                 for( final UER uer : metacycToUER.get( id ) ) {
